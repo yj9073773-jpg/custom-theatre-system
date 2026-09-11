@@ -1,8 +1,8 @@
 {
-  "id": "custom-chat-channels",
-  "title": "Custom Chat Channels",
-  "description": "Custom Theatre System과 연동되는 채팅탭 분리 및 관리 모듈",
-  "version": "0.4.3",
+  "id": "custom-theatre-system",
+  "title": "Custom Theatre System",
+  "description": "FVTT V13용 커스텀 스탠딩 이미지 및 대사창 연동 모듈 (표정 선택 도우미 위젯 추가)",
+  "version": "1.9.6",
   "persistentStorage": true,
   "socket": true,
   "compatibility": {
@@ -13,14 +13,13 @@
     "src/main.js"
   ],
   "styles": [
-    "src/styles/chat-channels.css"
+    "src/styles/theatre.css"
   ],
   "authors": [
     {
       "name": "Dgr1s"
     }
   ],
-  "url": "https://github.com/yj9073773-jpg/custom-chat-channels",
-  "manifest": "https://raw.githubusercontent.com/yj9073773-jpg/custom-chat-channels/main/module.json",
-  "download": "https://github.com/yj9073773-jpg/custom-chat-channels/releases/download/v0.4.3/custom-chat-channels_v0_4_3.zip"
+ "manifest": "https://github.com/yj9073773-jpg/custom-theatre-system/releases/latest/download/module.json",
+ "download": "https://github.com/yj9073773-jpg/custom-theatre-system/releases/download/v1.9.6/custom-theatre-system_v1_9_6.zip"
 }
