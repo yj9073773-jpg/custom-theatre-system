@@ -8,7 +8,7 @@ AI를 활용한 바이브 코딩으로 제작되었으며, D&D 5e와 Call of Cth
 
 채팅 초상화에 영향을 주거나 채팅 메시지를 병합하는 모듈과 함께 사용할 경우 충돌이 발생할 수 있습니다. 해당 기능을 사용하는 모듈이 있다면 관련 설정을 확인해 주세요.
 
-**이 모듈은 `custom-chat-channels`를 종속 모듈로 사용합니다.**
+**이 모듈은 `custom-chat-channels`를 종속 모듈로 사용합니다.** https://github.com/yj9073773-jpg/custom-chat-channels
 
 `custom-chat-channels`는 채팅 탭 분리와 스탠딩 전용 채널의 추가 및 관리를 담당합니다. 현재 버전에서는 `custom-chat-channels`와 함께 사용하는 것을 권장합니다.
 
