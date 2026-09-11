@@ -21,6 +21,6 @@
     }
   ],
   "url": "https://github.com/yj9073773-jpg/custom-chat-channels",
-  "manifest": "https://github.com/yj9073773-jpg/custom-chat-channels/releases/latest/download/module.json",
+  "manifest": "https://raw.githubusercontent.com/yj9073773-jpg/custom-chat-channels/main/module.json",
   "download": "https://github.com/yj9073773-jpg/custom-chat-channels/releases/download/v0.4.3/custom-chat-channels_v0_4_3.zip"
 }
