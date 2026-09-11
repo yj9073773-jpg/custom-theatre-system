@@ -34,6 +34,8 @@ AI를 활용한 바이브 코딩으로 제작되었으며, D&D 5e와 Call of Cth
 
 표정 커맨드 사용 시 다른 텍스트를 함께 입력하면 커맨드 외의 텍스트는 처리되지 않습니다. 표정을 커맨드로 변경할 때는 @표정 커맨드만 입력해 주세요.
 
+@퇴장 입력시 캐릭터가 무대에서 퇴장합니다.
+
 
 <img width="702" height="632" alt="액터의 표정" src="https://github.com/user-attachments/assets/c6de7181-d357-4141-9bb4-b50570efb38d" />
 
