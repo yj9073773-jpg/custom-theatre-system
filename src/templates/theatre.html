@@ -1,0 +1,321 @@
+{{#if hasContent}}
+<div class="theatre-wrapper {{#if minimized}}minimized{{/if}}">
+  <div class="theatre-body">
+    <div class="theatre-portraits-wrapper">
+      {{#if standingChannelBar}}
+        <div class="ctp-standing-channel-bar" aria-label="스탠딩 채널 선택">
+          {{#each standingChannelBar.buttons}}
+            <button
+              type="button"
+              class="ctp-standing-channel-btn {{#if this.active}}active{{/if}} {{#if this.disabled}}disabled{{/if}} {{#if this.forced}}forced{{/if}}"
+              data-channel-id="{{this.id}}"
+              title="{{this.name}}{{#if this.disabled}} (참여하지 않음){{/if}}{{#if this.forced}} — GM 강제 전환 중{{/if}}"
+            >{{this.displayName}}</button>
+          {{/each}}
+          {{#if standingChannelBar.isGM}}
+            <button
+              type="button"
+              id="theatre-standing-channel-config-btn"
+              class="ctp-standing-channel-config-btn"
+              title="스탠딩 채널 설정 (최대 3개, GM 전용)"
+            ><i class="fa-solid fa-gear"></i></button>
+          {{/if}}
+        </div>
+      {{/if}}
+      {{#each slots}}
+        <div class="theatre-slot {{#if this}}active{{/if}} {{#if (eq this.actorId ../speakerActorId)}}speaking{{else}}not-speaking{{/if}}" data-slot-index="{{@index}}">
+          {{#if this}}
+            <img src="{{this.expressionImg}}" alt="{{this.actorName}}" class="standing-img" style="--standing-scale: {{this.standingScale}};">
+          {{/if}}
+        </div>
+      {{/each}}
+    </div>
+
+    {{#if hasDialogue}}
+      <div class="theatre-textbox">
+        <div id="theatre-dialogue-speaker" class="textbox-speaker-name" style="color: {{speakerAppearance.nameColor}}; font-size: {{speakerTypography.nameFontSize}}px;">{{speakerName}}</div>
+        <div id="theatre-dialogue-content" class="textbox-content" style="font-size: {{speakerTypography.chatFontSize}}px;">{{dialogueText}}</div>
+      </div>
+    {{/if}}
+  </div>
+
+  <div class="theatre-controls" aria-label="극장 HUD 제어">
+    <button id="theatre-previous-btn" title="이전 대사/페이지">‹</button>
+    <button id="theatre-next-btn" title="현재 대사 완성 또는 다음 페이지">›</button>
+    <button id="theatre-jump-latest-btn" title="가장 최근 대사로 돌아가기">»</button>
+    <span class="theatre-control-separator"></span>
+    <button id="theatre-drag-handle" title="드래그하여 이동" {{#if positionLocked}}disabled{{/if}}>⋮⋮</button>
+    <button id="theatre-lock-btn" title="{{#if positionLocked}}위치 잠금 해제{{else}}위치 잠금{{/if}}">{{#if positionLocked}}🔒{{else}}🔓{{/if}}</button>
+    {{#if isGM}}
+      <button id="theatre-reset-standings-btn" title="스탠딩 전체 초기화 (GM 전용 · 잠긴 슬롯 포함, 대사창은 유지)">↺</button>
+    {{/if}}
+    <button id="theatre-manager-btn" title="무대 매니저 열기 (우클릭: 표정 선택 도우미)" aria-label="무대 매니저 열기"><i class="fa-solid fa-masks-theater"></i></button>
+    <button id="theatre-settings-btn" title="모듈 설정" aria-label="모듈 설정"><i class="fa-solid fa-gear"></i></button>
+    <span class="theatre-control-separator theatre-control-separator--wide"></span>
+    <button id="theatre-minimize-btn" title="{{#if minimized}}펼치기{{else}}최소화{{/if}}">{{#if minimized}}▢{{else}}─{{/if}}</button>
+  </div>
+  <div id="theatre-resize-handle" title="드래그하여 대사창 폭과 높이 조절" {{#if positionLocked}}aria-disabled="true"{{/if}}></div>
+</div>
+{{/if}}
+
+<style>
+#custom-theatre-container {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--hud-width, 880px);
+  max-width: calc(100vw - 40px);
+  z-index: var(--ctp-hud-z-index, 60);
+  pointer-events: none;
+}
+
+.theatre-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  position: relative;
+}
+
+.theatre-body {
+  width: 100%;
+  position: relative;
+}
+
+.theatre-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  align-self: flex-start;
+  margin: 10px 0 0 7px;
+  z-index: 2;
+  pointer-events: auto;
+  opacity: 0.32;
+  transition: opacity 0.15s ease;
+}
+.theatre-controls:hover { opacity: 1; }
+
+#theatre-controls button,
+.theatre-controls button {
+  width: 23px;
+  height: 23px;
+  min-height: 23px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: rgba(10, 10, 10, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 17px;
+  line-height: 21px;
+  cursor: move;
+  user-select: none;
+}
+#theatre-drag-handle { cursor: move; font-size: 13px; }
+.theatre-controls button:disabled { cursor: not-allowed; color: #777; }
+.theatre-controls button:not(#theatre-drag-handle) { cursor: pointer; }
+.theatre-control-separator { width: 1px; height: 16px; background: rgba(255,255,255,0.24); margin: 0 2px; }
+/* 모듈 설정↔최소화 버튼 사이는, 다른 구간에 쓰는 구분선(1px 폭 + 2px 마진)을 폭/마진
+   모두 2배로 키운 전용 구분선으로 띄운다. 무대 매니저 열기 버튼은 모듈 설정 버튼과
+   바로 붙어 한 그룹으로 보이게 둔다(별도 간격 없음). */
+.theatre-control-separator--wide { width: 2px; margin: 0 4px; }
+
+/* 우하단 그립으로 대사창 폭과 높이만 조절한다. */
+#theatre-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  pointer-events: auto;
+  z-index: 3;
+  opacity: 0.42;
+  background: linear-gradient(135deg, transparent 0 42%, rgba(255,255,255,0.78) 43% 49%, transparent 50% 61%, rgba(255,255,255,0.78) 62% 68%, transparent 69%);
+}
+#theatre-resize-handle:hover { opacity: 1; }
+
+/* 최소화 상태: 드래그 핸들/버튼만 남기고 스탠딩+대사창은 숨김 */
+.theatre-wrapper.minimized .theatre-body {
+  display: none;
+}
+
+.textbox-speaker-name {
+  font-weight: bold;
+  font-size: 16px;
+  line-height: 1.3;
+  color: #fff;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 0 0 10px;
+}
+
+.theatre-portraits-wrapper {
+  width: 100%;
+  height: 350px;
+  position: relative;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* [Phase 3, 2장] 스탠딩 박스 우측 하단 채널 버튼 바.
+   .theatre-portraits-wrapper와 .theatre-textbox는 둘 다 .theatre-body(width:100%)의
+   자식이고 실제 폭은 공통으로 --hud-width로 결정되어 항상 폭이 완전히 동일하므로,
+   여기서 right:0으로 절대 위치를 주면 대사창을 리사이즈해도 별도 JS 동기화 없이
+   텍스트박스 우측 끝(테두리 바깥쪽 기준)과 자동으로 정렬된다. */
+.ctp-standing-channel-bar {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  pointer-events: auto;
+  opacity: 0.32;
+  transition: opacity 0.15s ease;
+}
+.ctp-standing-channel-bar:hover { opacity: 1; }
+
+/* [Phase 3, 4장] 채널 이름 버튼: custom-chat-channels의 .ccc-tab 규칙(고정폭 74px,
+   말줄임 텍스트, active = 굵게)을 그대로 복제한다. 안읽음(*) 표시는 스탠딩
+   버튼에는 없음(제외). 두 모듈이 분리된 별도 ESM이라 CSS도 직접 공유할 수 없으므로,
+   chat-channels 쪽 .ccc-tab 규칙이 바뀌면 이 블록도 같이 바꿔야 한다. */
+.ctp-standing-channel-btn {
+  flex: 0 0 auto;
+  width: 74px;
+  min-width: 74px;
+  max-width: 74px;
+  height: 22px;
+  min-height: 22px;
+  padding: 2px 0;
+  line-height: 1.6;
+  border: 0;
+  border-radius: 2px;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  background: rgba(10, 10, 10, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  /* [버그 3] outline/:focus 규칙이 따로 없어서 클릭 후 브라우저 기본 포커스 링(Foundry
+     코어 테마의 오렌지 계열 강조색)이 그대로 노출되던 문제. 단순 클래스 선택자(outline:
+     none)만으로는 Foundry 코어 CSS의 button:focus-visible류(요소+가상클래스라 우선순위가
+     더 높음)에 밀려 적용되지 않았다 — :focus/:focus-visible을 명시하고 확실히 이기도록 한다.
+     이 모듈 CSS 어디에도 outline을 쓰는 다른 규칙이 없으므로 이 값을 덮어쓸 걱정은 없다. */
+  outline: none;
+}
+.ctp-standing-channel-btn:focus,
+.ctp-standing-channel-btn:focus-visible {
+  outline: none !important;
+}
+/* [가시성 개선] "내가 지금 보고 있는 채널" = 폰트색과 연동된 아웃라인.
+   GM의 "주목"(강제 전환, 아래 .forced) 표시와 시각적으로 완전히 분리하기 위해
+   테두리는 이 active 상태 전용으로만 쓴다. */
+.ctp-standing-channel-btn.active {
+  font-weight: bold;
+  box-shadow: 0 0 0 1px currentColor inset;
+}
+.ctp-standing-channel-btn.disabled {
+  color: rgba(255, 255, 255, 0.28);
+  cursor: not-allowed;
+}
+/* [가시성 개선] GM 강제 전환("주목") 표시는 테두리가 아니라 배경 채움으로 바꿔
+   active 아웃라인과 절대 헷갈리지 않게 한다. 색은 계속 빨강 유지(경고성 강조),
+   버튼 자신의 글자색 기준 30% 오퍼시티로 채운다. active와 forced가 동시에 걸리면
+   배경(forced)+테두리(active)가 함께 보여 "내가 보고 있고 + GM이 강제 중"임을
+   한 번에 알 수 있다. */
+.ctp-standing-channel-btn.forced {
+  background: rgba(255, 80, 80, 0.3);
+}
+
+.ctp-standing-channel-config-btn {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: rgba(10, 10, 10, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  line-height: 21px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.theatre-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: absolute;
+  bottom: 0;
+  width: 25%;
+  transform: translateX(-50%);
+  overflow: visible;
+}
+
+/* 슬롯 중심점은 로컬 스탠딩 간격 설정으로 계산한다. */
+.theatre-slot[data-slot-index="0"] { left: var(--slot-1-left, 20%); z-index: 1; }
+.theatre-slot[data-slot-index="1"] { left: var(--slot-2-left, 40%); z-index: 2; }
+.theatre-slot[data-slot-index="2"] { left: var(--slot-3-left, 60%); z-index: 3; }
+.theatre-slot[data-slot-index="3"] { left: var(--slot-4-left, 80%); z-index: 4; }
+
+/* 발화자가 있으면 슬롯 번호와 무관하게 항상 가장 앞으로 나오도록 한다. */
+.theatre-slot.speaking { z-index: 5; }
+
+.standing-img {
+  height: auto;
+  max-height: 100%;
+  /* 기본 HUD 폭의 1/4과 같은 크기로 제한해 과도한 원본 이미지 확대를 막는다. */
+  max-width: 220px;
+  object-fit: contain;
+  filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.8));
+  pointer-events: auto;
+  transform: scale(calc(var(--standing-scale, 1) * var(--global-standing-scale, 1)));
+  transform-origin: bottom center;
+}
+
+/* 현재 발화자가 아닌 스탠딩은 30% 어둡게 표시한다. */
+.theatre-slot.not-speaking .standing-img {
+  filter: brightness(0.7) drop-shadow(0px 8px 12px rgba(0,0,0,0.8));
+}
+
+.theatre-textbox {
+  width: 100%;
+  height: var(--textbox-height, 168px);
+  background: rgba(15, 15, 15, 0.92);
+  border: 1px solid #6f6f6f;
+  border-radius: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 15px 28px 5px;
+  color: #fff;
+  font-size: 17px;
+  line-height: 26px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.textbox-content {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  cursor: pointer;
+}
+</style>

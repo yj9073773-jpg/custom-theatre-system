@@ -1,0 +1,23 @@
+{
+  "id": "custom-theatre-system",
+  "title": "Custom Theatre System",
+  "description": "FVTT V13용 커스텀 스탠딩 이미지 및 대사창 연동 모듈 (표정 선택 도우미 위젯 추가)",
+  "version": "1.9.6",
+  "persistentStorage": true,
+  "socket": true,
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "esmodules": [
+    "src/main.js"
+  ],
+  "styles": [
+    "src/styles/theatre.css"
+  ],
+  "authors": [
+    {
+      "name": "Dgr1s"
+    }
+  ]
+}

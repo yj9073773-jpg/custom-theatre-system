@@ -1,0 +1,361 @@
+/* ==========================================================================
+   Custom Theatre Inserts (V13) — 통합 스타일시트
+   ------------------------------------------------------------------------
+   과거에는 theatre.html / gm-manager.html / GMManagerApp.js 내부에 각각
+   <style> 태그로 흩어져 있어, 해당 컴포넌트가 실제로 렌더링될 때만 CSS가
+   DOM에 삽입되는 구조였다(module.json에 정적 CSS 등록이 없었음). 그 결과
+   새로고침 직후처럼 아직 아무 컴포넌트도 다시 렌더링되지 않은 시점에는
+   스타일이 전혀 적용되지 않는 문제가 있었다.
+   이 파일은 module.json의 "styles"에 등록되어 Foundry가 모듈 로드 시점에
+   항상 자동으로 불러오므로, 어떤 창이 렌더링됐는지와 무관하게 항상 적용된다.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1) 무대 HUD (구 theatre.html <style>)
+   -------------------------------------------------------------------------- */
+#custom-theatre-container {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--hud-width, 880px);
+  max-width: calc(100vw - 40px);
+  z-index: 60;
+  pointer-events: none;
+}
+
+.theatre-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  position: relative;
+}
+
+.theatre-body {
+  width: 100%;
+  position: relative;
+}
+
+.theatre-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  align-self: flex-start;
+  margin: 10px 0 0 7px;
+  z-index: 2;
+  pointer-events: auto;
+  opacity: 0.32;
+  transition: opacity 0.15s ease;
+}
+.theatre-controls:hover { opacity: 1; }
+
+#theatre-controls button,
+.theatre-controls button {
+  width: 23px;
+  height: 23px;
+  min-height: 23px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: rgba(10, 10, 10, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 17px;
+  line-height: 21px;
+  cursor: move;
+  user-select: none;
+}
+#theatre-drag-handle { cursor: move; font-size: 13px; }
+.theatre-controls button:disabled { cursor: not-allowed; color: #777; }
+.theatre-controls button:not(#theatre-drag-handle) { cursor: pointer; }
+.theatre-control-separator { width: 1px; height: 16px; background: rgba(255,255,255,0.24); margin: 0 2px; }
+/* 매니저 바로가기는 최소화 버튼과 붙지 않도록 별도 간격을 둔다. */
+#theatre-manager-btn { margin-right: 7px; }
+
+/* 우하단 그립으로 대사창 폭과 높이만 조절한다. */
+#theatre-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  pointer-events: auto;
+  z-index: 3;
+  opacity: 0.42;
+  background: linear-gradient(135deg, transparent 0 42%, rgba(255,255,255,0.78) 43% 49%, transparent 50% 61%, rgba(255,255,255,0.78) 62% 68%, transparent 69%);
+}
+#theatre-resize-handle:hover { opacity: 1; }
+
+/* 최소화 상태: 드래그 핸들/버튼만 남기고 스탠딩+대사창은 숨김 */
+.theatre-wrapper.minimized .theatre-body {
+  display: none;
+}
+
+.textbox-speaker-name {
+  font-weight: bold;
+  font-size: 16px;
+  line-height: 1.3;
+  color: #fff;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 0 0 10px;
+}
+
+.theatre-portraits-wrapper {
+  width: 100%;
+  height: 350px;
+  position: relative;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.theatre-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: absolute;
+  bottom: 0;
+  width: 25%;
+  transform: translateX(-50%);
+  overflow: visible;
+}
+
+/* 슬롯 중심점은 로컬 스탠딩 간격 설정으로 계산한다. */
+.theatre-slot[data-slot-index="0"] { left: var(--slot-1-left, 20%); z-index: 1; }
+.theatre-slot[data-slot-index="1"] { left: var(--slot-2-left, 40%); z-index: 2; }
+.theatre-slot[data-slot-index="2"] { left: var(--slot-3-left, 60%); z-index: 3; }
+.theatre-slot[data-slot-index="3"] { left: var(--slot-4-left, 80%); z-index: 4; }
+
+/* 발화자가 있으면 슬롯 번호와 무관하게 항상 가장 앞으로 나오도록 한다. */
+.theatre-slot.speaking { z-index: 5; }
+
+.standing-img {
+  height: auto;
+  max-height: 100%;
+  /* 기본 HUD 폭의 1/4과 같은 크기로 제한해 과도한 원본 이미지 확대를 막는다. */
+  max-width: 220px;
+  object-fit: contain;
+  filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.8));
+  pointer-events: auto;
+  transform: scale(calc(var(--standing-scale, 1) * var(--global-standing-scale, 1)));
+  transform-origin: bottom center;
+}
+
+/* 현재 발화자가 아닌 스탠딩은 30% 어둡게 표시한다. */
+.theatre-slot.not-speaking .standing-img {
+  filter: brightness(0.7) drop-shadow(0px 8px 12px rgba(0,0,0,0.8));
+}
+
+.theatre-textbox {
+  width: 100%;
+  height: var(--textbox-height, 168px);
+  background: rgba(15, 15, 15, 0.92);
+  border: 1px solid #6f6f6f;
+  border-radius: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 15px 28px 5px;
+  color: #fff;
+  font-size: 17px;
+  line-height: 26px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.textbox-content {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   2) GM 무대 매니저 (구 gm-manager.html <style>)
+   -------------------------------------------------------------------------- */
+.theatre-manager {
+  font-size: 13px;
+  color: #ddd;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+}
+.tm-columns {
+  display: flex;
+  gap: 10px;
+  height: 100%;
+}
+.tm-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px;
+  overflow-y: auto;
+}
+.tm-expressions { flex: 1.3; }
+.tm-col h3 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #555;
+  padding-bottom: 4px;
+}
+.tm-actor-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tm-actor-item:hover { background: rgba(255,255,255,0.08); }
+.tm-actor-item.selected { background: rgba(80,140,255,0.25); }
+.tm-actor-thumb {
+  width: 28px; height: 28px; object-fit: cover; border-radius: 4px; border: 1px solid #555;
+}
+.tm-add-btn {
+  font-size: 11px; padding: 2px 6px; cursor: pointer;
+}
+.tm-expr-item {
+  display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid #333;
+}
+.tm-expr-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid #555; }
+.tm-expr-name { flex: 1; }
+.tm-expr-actions { display: flex; gap: 2px; }
+.tm-expr-select {
+  /* 라디오 버튼 느낌의 커스텀 체크박스: 실제 input은 숨기고 span으로 표시 */
+  position: relative;
+  display: inline-flex;
+  width: 16px; height: 16px;
+  flex: 0 0 auto;
+}
+.tm-expr-select input[type="checkbox"] {
+  position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; z-index: 1;
+}
+.tm-expr-select .tm-expr-select-dot {
+  width: 16px; height: 16px; border-radius: 50%; border: 1px solid #888;
+  background: rgba(255,255,255,0.05); box-sizing: border-box; pointer-events: none;
+}
+.tm-expr-select input[type="checkbox"]:checked ~ .tm-expr-select-dot {
+  border-color: #6fa8ff; background: #6fa8ff;
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,0.35);
+}
+.tm-expr-select input[type="checkbox"]:hover ~ .tm-expr-select-dot { border-color: #aac8ff; }
+.tm-slot-assign-row {
+  display: flex; gap: 6px; margin: 4px 0 10px 0;
+}
+.tm-slot-assign-row .tm-slot-assign-btn-lg {
+  flex: 1; height: 34px; font-size: 14px; font-weight: bold; cursor: pointer;
+}
+.tm-slot-assign-btn-lg:disabled { cursor: not-allowed; opacity: 0.45; }
+.tm-section-subtitle {
+  font-size: 11px; color: #999; margin: 2px 0 6px 0; text-transform: uppercase; letter-spacing: 0.02em;
+}
+.tm-remove-btn {
+  width: 20px; height: 20px; font-size: 11px; padding: 0; cursor: pointer; color: #f88;
+}
+.tm-rename-btn {
+  width: 20px; height: 20px; font-size: 11px; padding: 0; cursor: pointer;
+}
+.tm-slot-preview {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;
+}
+.tm-slot-box {
+  border: 1px solid #444; border-radius: 4px; padding: 4px; text-align: center;
+}
+.tm-slot-label { font-size: 10px; color: #999; }
+.tm-slot-img { width: 100%; height: 60px; object-fit: contain; }
+.tm-slot-empty { font-size: 11px; color: #777; padding: 18px 0; }
+.tm-clear-slot-btn { font-size: 10px; margin-top: 2px; cursor: pointer; }
+.tm-bottom-buttons {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 6px;
+}
+.tm-bottom-buttons-top { display: flex; flex-wrap: wrap; gap: 6px; }
+.tm-bottom-buttons-unused {
+  display: flex; border-top: 1px solid #444; padding-top: 6px;
+}
+.tm-bottom-buttons-unused button { flex: 1; }
+.tm-danger { color: #f88; }
+
+/* [v1.9.5] 미사용 표정 파일 찾기 다이얼로그: 조회 전용 썸네일 그리드.
+   안내문+그리드 전체를 .tm-unused-scroll 하나로 묶어서 스크롤시킨다 — 다이얼로그
+   창의 position.height를 고정값으로 주면 안내문 길이에 따라 창이 넘치면서
+   하단 버튼(푸터)이 화면 밖으로 밀려나는 문제가 있었기 때문에, 창 자체는
+   높이를 고정하지 않고 이 내부 영역만 뷰포트 기준(vh)으로 스크롤되게 한다. */
+.tm-unused-scroll { max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+.tm-unused-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px; padding: 4px;
+}
+.tm-unused-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px; border: 1px solid #555; border-radius: 4px;
+  position: relative; background: rgba(0, 0, 0, 0.15);
+}
+.tm-unused-item img {
+  width: 60px; height: 60px; max-width: 60px; max-height: 60px;
+  object-fit: cover; border-radius: 3px; background: #222; flex-shrink: 0;
+}
+.tm-unused-name {
+  font-size: 11px; text-align: center; word-break: break-all; max-width: 100%; line-height: 1.3;
+}
+.tm-unused-badge {
+  font-size: 10px; background: #a33; color: #fff; border-radius: 3px; padding: 0 4px;
+}
+.tm-unused-badge-del { background: #c22; }
+/* [v1.9.5] 폴더 안 배치 그대로 전체 파일을 보여주되, 미사용 파일만 두꺼운 빨간
+   테두리로 강조해서 "이건 지워도 되는 파일"임을 한눈에 구분한다. */
+.tm-unused-item.tm-unused-mark {
+  border: 3px solid #e33; box-shadow: 0 0 4px rgba(238, 51, 51, 0.6);
+}
+.tm-unused-toolbar {
+  display: flex; align-items: center; gap: 10px; margin: 6px 0 8px; font-size: 12px;
+}
+.tm-unused-toolbar label { display: flex; align-items: center; gap: 6px; }
+.tm-unused-note { opacity: 0.7; font-style: italic; }
+.tm-appearance-form { display: grid; gap: 6px; margin-bottom: 10px; }
+/* 액터 목록과 "전체 설정"을 별도 스크롤 영역으로 분리한다.
+   - .tm-col의 기본 overflow-y:auto를 이 칼럼에서는 끄고(overflow-y: hidden),
+     .tm-actor-list 자신만 flex:1 + overflow-y:auto로 스크롤되게 한다.
+   - .tm-global-settings는 flex-shrink:0으로 항상 제 크기를 유지하며 스크롤 밖에
+     남아있으므로, 액터 수가 아무리 많아도 창을 열자마자 항상 보인다. */
+.tm-col.tm-actors { overflow-y: hidden; }
+.tm-actor-list { flex: 1; min-height: 0; overflow-y: auto; }
+.tm-global-settings {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #555;
+}
+.tm-global-settings h3 { margin-top: 0; }
+.tm-typography-form { display: grid; gap: 6px; }
+.tm-appearance-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 6px; font-size: 11px; }
+.tm-appearance-row input[type="range"] { width: 100%; }
+.tm-lock-slot-btn { font-size: 10px; margin-top: 2px; cursor: pointer; }
+.tm-slot-locked { border-color: #c99a3e; background: rgba(201,154,62,0.1); }
+
+/* --------------------------------------------------------------------------
+   3) 채팅 초상화 영역 지정 팝업 (구 GMManagerApp.js 내부 인라인 <style>)
+   -------------------------------------------------------------------------- */
+.ctp-editor .ctp-tab-btn { padding: 4px 8px; font-size: 11px; cursor: pointer; }
+.ctp-editor .ctp-tab-btn.active { background: rgba(80,140,255,0.35); }
+.ctp-editor .tm-appearance-row { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; }
+.ctp-editor .tm-appearance-row input[type="range"] { width: 100%; }

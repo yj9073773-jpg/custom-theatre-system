@@ -1,0 +1,283 @@
+<div class="theatre-manager">
+  <style>
+  .theatre-manager {
+    font-size: 13px;
+    color: #ddd;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+  }
+  .tm-columns {
+    display: flex;
+    gap: 10px;
+    height: 100%;
+  }
+  .tm-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: rgba(0,0,0,0.15);
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px;
+    overflow-y: auto;
+  }
+  .tm-expressions { flex: 1.3; }
+  .tm-col h3 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+  }
+  .tm-actor-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .tm-actor-item:hover { background: rgba(255,255,255,0.08); }
+  .tm-actor-item.selected { background: rgba(80,140,255,0.25); }
+  .tm-actor-thumb {
+    width: 28px; height: 28px; object-fit: cover; border-radius: 4px; border: 1px solid #555;
+  }
+  .tm-add-btn {
+    font-size: 11px; padding: 2px 6px; cursor: pointer;
+  }
+  .tm-save-appearance-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .tm-save-appearance-btn { flex: none; width: 92px; height: 26px; font-size: 11px; padding: 0 4px; cursor: pointer; font-weight: bold; }
+  .tm-portrait-btn { display: block; width: 100%; height: 32px; font-size: 13px; padding: 4px 10px; margin-top: 6px; font-weight: bold; }
+  .tm-expr-item {
+    display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid #333;
+  }
+  .tm-expr-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid #555; }
+  .tm-expr-name { flex: 1; }
+  .tm-expr-actions { display: flex; gap: 2px; }
+  .tm-expr-select {
+    /* 라디오 버튼 느낌의 커스텀 체크박스: 실제 input은 숨기고 span으로 표시 */
+    position: relative;
+    display: inline-flex;
+    width: 16px; height: 16px;
+    flex: 0 0 auto;
+  }
+  .tm-expr-select input[type="checkbox"] {
+    position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; z-index: 1;
+  }
+  .tm-expr-select .tm-expr-select-dot {
+    width: 16px; height: 16px; border-radius: 50%; border: 1px solid #888;
+    background: rgba(255,255,255,0.05); box-sizing: border-box; pointer-events: none;
+  }
+  .tm-expr-select input[type="checkbox"]:checked ~ .tm-expr-select-dot {
+    border-color: #6fa8ff; background: #6fa8ff;
+    box-shadow: inset 0 0 0 3px rgba(0,0,0,0.35);
+  }
+  .tm-expr-select input[type="checkbox"]:hover ~ .tm-expr-select-dot { border-color: #aac8ff; }
+  .tm-slot-assign-row {
+    display: flex; gap: 6px; margin: 4px 0 10px 0;
+  }
+  .tm-slot-assign-row .tm-slot-assign-btn-lg {
+    flex: 1; height: 34px; font-size: 14px; font-weight: bold; cursor: pointer;
+  }
+  .tm-slot-assign-btn-lg:disabled { cursor: not-allowed; opacity: 0.45; }
+  .tm-section-subtitle {
+    font-size: 11px; color: #999; margin: 2px 0 6px 0; text-transform: uppercase; letter-spacing: 0.02em;
+  }
+  .tm-remove-btn {
+    width: 20px; height: 20px; font-size: 11px; padding: 0; cursor: pointer; color: #f88;
+  }
+  .tm-rename-btn {
+    width: 20px; height: 20px; font-size: 11px; padding: 0; cursor: pointer;
+  }
+  .tm-slot-preview {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;
+  }
+  /* [Phase 4] 매니저 편집 대상 채널 선택 목록 */
+  .tm-channel-selector { margin-bottom: 8px; }
+  .tm-channel-selector-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tm-channel-selector-btn {
+    font-size: 11px; padding: 3px 8px; border-radius: 10px; cursor: pointer;
+    border: 1px solid #555; background: transparent; color: #ccc;
+  }
+  .tm-channel-selector-btn-active {
+    border-color: #6cf; color: #6cf; font-weight: bold;
+  }
+  .tm-slot-box {
+    border: 1px solid #444; border-radius: 4px; padding: 4px; text-align: center;
+  }
+  .tm-slot-label { font-size: 10px; color: #999; }
+  .tm-slot-img { width: 100%; height: 60px; object-fit: contain; }
+  .tm-slot-empty { font-size: 11px; color: #777; padding: 18px 0; }
+  .tm-clear-slot-btn { font-size: 10px; margin-top: 2px; cursor: pointer; }
+  .tm-bottom-buttons { display: flex; gap: 6px; margin-top: 6px; min-width: 0; }
+  .tm-bottom-buttons button {
+    flex: 1; min-width: 0; height: 34px; font-size: 12px; padding: 0 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  }
+  .tm-danger { color: #f88; }
+  .tm-appearance-form { display: grid; gap: 6px; margin-bottom: 10px; }
+  /* 액터 목록과 "전체 설정"을 별도 스크롤 영역으로 분리한다.
+     - .tm-col의 기본 overflow-y:auto를 이 칼럼에서는 끄고(overflow-y: hidden),
+       .tm-actor-list 자신만 flex:1 + overflow-y:auto로 스크롤되게 한다.
+     - .tm-global-settings는 flex-shrink:0으로 항상 제 크기를 유지하며 스크롤 밖에
+       남아있으므로, 액터 수가 아무리 많아도 창을 열자마자 항상 보인다. */
+  .tm-col.tm-actors { overflow-y: hidden; }
+  .tm-actor-list { flex: 1; min-height: 0; overflow-y: auto; }
+  .tm-global-settings {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #555;
+  }
+  .tm-global-settings h3 { margin-top: 0; }
+  .tm-typography-form { display: grid; gap: 6px; }
+  .tm-appearance-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 6px; font-size: 11px; }
+  .tm-appearance-row input[type="range"] { width: 100%; }
+  .tm-lock-slot-btn { font-size: 10px; margin-top: 2px; cursor: pointer; }
+  .tm-slot-locked { border-color: #c99a3e; background: rgba(201,154,62,0.1); }
+  </style>
+
+  <div class="tm-columns">
+
+    <!-- 좌측: 액터 목록 -->
+    <div class="tm-col tm-actors">
+      <h3>액터</h3>
+      <div class="tm-actor-list">
+        {{#each actors}}
+          <div class="tm-actor-item {{#if (eq id ../selectedActor.id)}}selected{{/if}}"
+               data-action="selectActor" data-actor-id="{{id}}">
+            <img src="{{img}}" class="tm-actor-thumb">
+            <span>{{name}}</span>
+          </div>
+        {{/each}}
+      </div>
+
+      <div class="tm-global-settings">
+        <h3>전체 설정(개인 적용)</h3>
+        <form class="tm-typography-form">
+          <div class="tm-appearance-row">
+            <label>이름 크기</label><input type="range" name="nameFontSize" min="12" max="32" step="0.5" value="{{globalTypography.nameFontSize}}">
+          </div>
+          <div class="tm-appearance-row">
+            <label>대사 크기</label><input type="range" name="chatFontSize" min="14" max="30" step="0.5" value="{{globalTypography.chatFontSize}}">
+          </div>
+          <div class="tm-appearance-row">
+            <label>스탠딩 배율</label><input type="range" name="globalStandingScale" min="0.5" max="2" step="0.03" value="{{globalStandingScale}}">
+          </div>
+          <div class="tm-appearance-row">
+            <label>스탠딩 간격</label><input type="range" name="standingSpacing" min="0.5" max="1.4" step="0.03" value="{{standingSpacing}}">
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 중앙: 선택된 액터의 표정 목록 -->
+    <div class="tm-col tm-expressions">
+      <h3>
+        {{#if selectedActor}}{{selectedActor.name}}의 표정{{else}}액터를 선택하세요{{/if}}
+        {{#if canEditSelected}}
+          <button type="button" class="tm-add-btn" data-action="uploadExpressions" title="내 PC에서 이미지 선택 및 업로드">내 PC에서 표정 추가</button>
+        {{/if}}
+      </h3>
+
+      {{#if canEditSelected}}
+        <div class="tm-section-subtitle">커스텀 설정 (모든 플레이어 적용)</div>
+        <form class="tm-appearance-form">
+          <div class="tm-appearance-row">
+            <label>이름 색</label><input type="color" name="nameColor" value="{{appearance.nameColor}}">
+          </div>
+          <div class="tm-appearance-row">
+            <label>스탠딩 크기</label><input type="range" name="standingScale" min="0.5" max="2" step="0.07" value="{{appearance.standingScale}}">
+          </div>
+          <div class="tm-save-appearance-row">
+            <button type="button" class="tm-save-appearance-btn" data-action="saveAppearance">설정 저장</button>
+          </div>
+          <button type="button" class="tm-add-btn tm-portrait-btn" data-action="openChatPortraitEditor" title="표정 이미지의 채팅 초상화 크롭 영역/배경색을 지정합니다">초상화 영역 지정</button>
+        </form>
+        <h3>무대 배정</h3>
+      {{/if}}
+
+      <div class="tm-slot-assign-row">
+        {{#each slots}}
+          <button type="button" class="tm-slot-assign-btn-lg" data-action="assignSlot"
+                  data-slot-index="{{@index}}"
+                  title="{{#if (lookup ../lockedSlots @index)}}잠긴 슬롯{{else}}선택된 표정을 슬롯 {{math @index "+" 1}}번에 배정{{/if}}"
+                  {{#if (lookup ../lockedSlots @index)}}disabled{{/if}}>{{math @index "+" 1}}</button>
+        {{/each}}
+      </div>
+
+      <div class="tm-section-subtitle">표정 선택 (체크 후 위 슬롯 버튼을 눌러야 무대에 배정됩니다)</div>
+      <div class="tm-expr-list">
+        {{#each expressions}}
+          <div class="tm-expr-item">
+            <label class="tm-expr-select" title="배정할 표정으로 선택">
+              <input type="checkbox" data-action="selectExpression" data-index="{{@index}}"
+                     {{#if (eq this.img ../selectedExpressionImg)}}checked{{/if}}>
+              <span class="tm-expr-select-dot"></span>
+            </label>
+            <img src="{{this.img}}" class="tm-expr-thumb">
+            <span class="tm-expr-name">{{this.name}}</span>
+            <div class="tm-expr-actions">
+              <button type="button" class="tm-rename-btn" data-action="renameExpression"
+                      data-index="{{@index}}" title="표정 이름 수정">✎</button>
+              <button type="button" class="tm-remove-btn" data-action="removeExpression"
+                      data-index="{{@index}}" title="삭제">✕</button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+
+    <!-- 우측: 현재 슬롯 상태 + 대사 전송 -->
+    <div class="tm-col tm-slots">
+      {{#if standingChannelSelector.length}}
+        <div class="tm-channel-selector">
+          <div class="tm-section-subtitle">편집할 채널 선택</div>
+          <div class="tm-channel-selector-list">
+            {{#each standingChannelSelector}}
+              <button type="button" class="tm-channel-selector-btn {{#if this.active}}tm-channel-selector-btn-active{{/if}}"
+                      data-action="selectManagerChannel" data-channel-id="{{this.id}}">{{this.name}}</button>
+            {{/each}}
+          </div>
+        </div>
+      {{/if}}
+      <h3>현재 무대 (1~4번 슬롯)</h3>
+      <div class="tm-slot-preview">
+        {{#each slots}}
+          <div class="tm-slot-box {{#if (lookup ../lockedSlots @index)}}tm-slot-locked{{/if}}">
+            <div class="tm-slot-label">슬롯 {{math @index "+" 1}}</div>
+            {{#if this}}
+              <img src="{{this.expressionImg}}" class="tm-slot-img">
+              <div class="tm-slot-name">{{this.actorName}}</div>
+              <button type="button" class="tm-clear-slot-btn" data-action="clearSlot"
+                      data-slot-index="{{@index}}">비우기</button>
+            {{else}}
+              <div class="tm-slot-empty">비어있음</div>
+            {{/if}}
+            <button type="button" class="tm-lock-slot-btn" data-action="toggleSlotLock"
+                    data-slot-index="{{@index}}">{{#if (lookup ../lockedSlots @index)}}🔒 잠금 해제{{else}}🔓 잠금{{/if}}</button>
+          </div>
+        {{/each}}
+      </div>
+
+      <div class="tm-bottom-buttons">
+        <div class="tm-bottom-buttons-top">
+          {{#if isGM}}
+            <button type="button" class="tm-danger" data-action="clearAll">극장 초기화</button>
+          {{/if}}
+          <button type="button" data-action="resetPosition">위치 초기화</button>
+        </div>
+        {{#if isGM}}
+          <div class="tm-bottom-buttons-unused">
+            <button type="button" data-action="findUnusedExpressionFiles" title="이 월드에서 어떤 액터 표정 목록에도 안 걸려있는 파일을 찾아 보여줍니다">미사용 표정 파일 찾기</button>
+          </div>
+        {{/if}}
+      </div>
+    </div>
+
+  </div>
+</div>
